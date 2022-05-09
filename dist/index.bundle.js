@@ -7,49 +7,97 @@
 "use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   "TodoApp": () => (/* binding */ TodoApp)
+/* harmony export */   "Game": () => (/* binding */ Game)
 /* harmony export */ });
 /* harmony import */ var htmlmodule__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(2);
-/* harmony import */ var _TodoMain__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(12);
-/* harmony import */ var _TodoFooter__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(16);
-/* harmony import */ var _TodoHeader__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(17);
-/* harmony import */ var _api__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(15);
+/* harmony import */ var _Board_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(12);
+/* harmony import */ var _calculateWinner_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(14);
 
 
 
 
-
-
-class TodoApp extends htmlmodule__WEBPACK_IMPORTED_MODULE_0__.HtmlSection
+class Game extends htmlmodule__WEBPACK_IMPORTED_MODULE_0__.HtmlDiv
 {
-  state = { items : [] }
+  className = 'game'
 
-  className = 'todoapp'
+  state = {
+    history : [
+      {
+        squares : Array(9).fill(null),
+      },
+    ],
+    stepNumber : 0,
+    xIsNext : true,
+  }
+
+  handleClick(i) {
+    const history = this.state.history.slice(0, this.state.stepNumber + 1)
+    const current = history[history.length - 1]
+    const squares = current.squares.slice()
+    if((0,_calculateWinner_js__WEBPACK_IMPORTED_MODULE_2__.calculateWinner)(squares) || squares[i]) {
+      return
+    }
+    squares[i] = this.state.xIsNext ? 'X' : 'O'
+    this.setState({
+      history : history.concat([
+        {
+          squares : squares,
+        },
+      ]),
+      stepNumber : history.length,
+      xIsNext : !this.state.xIsNext,
+    })
+  }
+
+  jumpTo(step) {
+    this.setState({
+      stepNumber : step,
+      xIsNext : (step % 2) === 0,
+    })
+  }
 
   render() {
-    const items = this.state.items
+    const history = this.state.history
+    const current = history[this.state.stepNumber]
+    const winner = (0,_calculateWinner_js__WEBPACK_IMPORTED_MODULE_2__.calculateWinner)(current.squares)
+
+    const moves = history.map((step, move) => {
+      const desc = move ?
+        'Go to move #' + move :
+        'Go to game start'
+      return new htmlmodule__WEBPACK_IMPORTED_MODULE_0__.HtmlLi({
+        key : move,
+        children : new htmlmodule__WEBPACK_IMPORTED_MODULE_0__.HtmlButton({
+          onclick : () => this.jumpTo(move),
+          text : desc,
+        }),
+      })
+    })
+
+    let status
+    if(winner) {
+      status = 'Winner: ' + winner
+    }
+    else {
+      status = 'Next player: ' + (this.state.xIsNext ? 'X' : 'O')
+    }
+
     return [
-      new _TodoHeader__WEBPACK_IMPORTED_MODULE_3__.TodoHeader,
-      !!items.length && [
-        new _TodoMain__WEBPACK_IMPORTED_MODULE_1__.TodoMain({ items }),
-        new _TodoFooter__WEBPACK_IMPORTED_MODULE_2__.TodoFooter({ items }),
-      ],
+      new htmlmodule__WEBPACK_IMPORTED_MODULE_0__.HtmlDiv({
+        className : 'game-board',
+        children : new _Board_js__WEBPACK_IMPORTED_MODULE_1__.Board({
+          squares : current.squares,
+          onClick : i => this.handleClick(i),
+        }),
+      }),
+      new htmlmodule__WEBPACK_IMPORTED_MODULE_0__.HtmlDiv({
+        className : 'game-info',
+        children : [
+          new htmlmodule__WEBPACK_IMPORTED_MODULE_0__.HtmlDiv(status),
+          new htmlmodule__WEBPACK_IMPORTED_MODULE_0__.HtmlOl(moves),
+        ],
+      }),
     ]
-  }
-
-  async componentDidMount() {
-    window.onhashchange = () => this.setState()
-    _api__WEBPACK_IMPORTED_MODULE_4__["default"].addEventListener('update', this.onUpdate)
-    this.setState({ items : await _api__WEBPACK_IMPORTED_MODULE_4__["default"].getItems() })
-  }
-
-  componentWillUnmount() {
-    window.onhashchange = null
-    _api__WEBPACK_IMPORTED_MODULE_4__["default"].removeEventListener('update', this.onUpdate)
-  }
-
-  onUpdate = e => {
-    this.setState({ items : e.detail })
   }
 }
 
@@ -1005,7 +1053,6 @@ class AttrType
 
   /**
    * @returns {string}
-   * @override
    */
   static get attrName() {
     return this.name[0].toLowerCase() + this.name.slice(1)
@@ -1030,8 +1077,6 @@ const DomNode = __webpack_require__(8)
 const window = __webpack_require__(10)
 
 const { document } = window
-
-let counter = 0
 
 /**
  * @see https://dom.spec.whatwg.org/#interface-element
@@ -1086,20 +1131,6 @@ class DomElem extends DomNode
   }
 
   /**
-   * Generate a unique identifier among the document's tree
-   * @returns {String}
-   */
-  generateId() {
-    let id, str
-    do {
-      str = (counter++).toString(36)
-      id = 'ID_' + '0'.repeat(Math.max(0, 7 - str.length)) + str
-    }
-    while(document.getElementById(id))
-    return id
-  }
-
-  /**
    * @param {constructor|string} attr
    * @param {function} [attr.get]
    * @param {function} [attr.has]
@@ -1111,6 +1142,24 @@ class DomElem extends DomNode
       return attr.has(this)? attr.get(this) : attr.defaultValue
     }
     return this.node.getAttribute(attr)
+  }
+
+  /**
+   * @param {constructor|string} attr
+   * @param {function} [attr.removeOnValue]
+   * @param {function} [attr.set]
+   * @param {string|null|*} value
+   */
+  setAttr(attr, value) {
+    if(typeof attr === 'function') {
+      if(!attr.removeOnValue(this, value)) {
+        attr.set(this, value)
+      }
+    }
+    else if(value === null) {
+      this.node.removeAttribute(attr)
+    }
+    else this.node.setAttribute(attr, value)
   }
 
   /**
@@ -1133,46 +1182,6 @@ class DomElem extends DomNode
       attr.remove(this)
     }
     else this.node.removeAttribute(attr)
-  }
-
-  /**
-   * @param {constructor|string} attr
-   * @param {function} [attr.removeOnValue]
-   * @param {function} [attr.set]
-   * @param {string|null|*} value
-   */
-  setAttr(attr, value) {
-    if(typeof attr === 'function') {
-      if(!attr.removeOnValue(this, value)) {
-        attr.set(this, value)
-      }
-    }
-    else if(value === null) {
-      this.node.removeAttribute(attr)
-    }
-    else this.node.setAttribute(attr, value)
-  }
-
-  /**
-   * @param {KeyboardEvent} event
-   * @param {DomElem} elem
-   */
-  onKeyDown(event, elem) {
-    const handler = this['onKeyDown_' + event.code]
-    if(typeof handler === 'function') {
-      handler.apply(this, arguments)
-    }
-  }
-
-  /**
-   * @param {KeyboardEvent} event
-   * @param {DomElem} elem
-   */
-  onKeyUp(event, elem) {
-    const handler = this['onKeyUp_' + event.code]
-    if(typeof handler === 'function') {
-      handler.apply(this, arguments)
-    }
   }
 
   /**
@@ -1290,10 +1299,6 @@ DomElem.defineMethods([
   'scrollBy',
 ])
 
-DomElem.defineAttrs([
-  'role',
-])
-
 DomElem.defineProps([
   'clientLeft',
   'clientTop',
@@ -1320,7 +1325,7 @@ const { default : morphdom } = __webpack_require__(9)
 const window = __webpack_require__(10)
 
 const SPECIAL_PROPS = ['node', 'children']
-const { document, CustomEvent, DocumentFragment, EventTarget } = window
+const { document, CustomEvent, DocumentFragment, EventTarget, Node } = window
 
 /**
  * @see https://dom.spec.whatwg.org/#interface-node
@@ -1346,7 +1351,7 @@ class DomNode
    * @return {{}}
    */
   normalizeProps(props) {
-    if(props.constructor !== Object) {
+    if(props?.constructor !== Object) {
       props = { children : props }
     }
     else if(!props.children) {
@@ -1552,14 +1557,6 @@ class DomNode
   }
 
   /**
-   * @param {Node} node
-   * @return {*|DomNode}
-   */
-  static get(node) {
-    return node?.__instance || new this({ node })
-  }
-
-  /**
    * @param {{}} props
    * @param {Node} [parentNode]
    * @return {*|DomNode}
@@ -1579,28 +1576,35 @@ class DomNode
 const options = {
   childrenOnly : true,
   /**
-   * @param {Node} toNode
+   * @param {Element} node
+   * @return {string}
+   */
+  getNodeKey(node) {
+    return node.__instance?.key || node.id
+  },
+  /**
+   * @param {ChildNode} toNode
    */
   onNodeAdded(toNode) {
-    if(toNode.hasOwnProperty('__instance')) {
+    if(toNode.__instance) {
       document.contains(toNode) && toNode.__instance.componentDidMount()
     }
   },
   /**
-   * @param {Node} fromNode
-   * @param {Node} toNode
+   * @param {Element} fromNode
+   * @param {Element} toNode
    */
   onBeforeElUpdated(fromNode, toNode) {
-    if(toNode.hasOwnProperty('__instance') && fromNode.hasOwnProperty('__instance')) {
+    if(toNode.__instance && fromNode.__instance) {
       toNode.__instance.state = fromNode.__instance.state
     }
   },
   /**
-   * @param {Node} fromNode
-   * @param {Node} toNode
+   * @param {Element} fromNode
+   * @param {Element} toNode
    */
   onBeforeElChildrenUpdated(fromNode, toNode) {
-    if(toNode.hasOwnProperty('__instance') && fromNode.hasOwnProperty('__instance')) {
+    if(toNode.__instance && fromNode.__instance) {
       for(const type of fromNode.__instance.__handlers.keys()) {
         fromNode[type] = null
       }
@@ -1615,22 +1619,20 @@ const options = {
     }
   },
   /**
-   * @param {Node} fromNode
+   * @param {Element} fromNode
    */
   onElUpdated(fromNode) {
-    if(fromNode.hasOwnProperty('__instance')) {
+    if(fromNode.__instance) {
       const instance = fromNode.__instance
       instance.componentDidUpdate(instance.__prevProps, instance.state)
       delete instance.__prevProps
     }
   },
   /**
-   * @param {Node} fromNode
+   * @param {ChildNode} fromNode
    */
   onBeforeNodeDiscarded(fromNode) {
-    if(fromNode.hasOwnProperty('__instance')) {
-      fromNode.__instance?.destroy(true)
-    }
+    fromNode.__instance?.destroy(true)
   },
 }
 
@@ -1672,6 +1674,16 @@ const events = {
 }
 
 DomNode.defineEvents(Object.keys(events))
+
+Object.defineProperty(DomNode.prototype, 'key', {
+  writable : true,
+  value : null,
+})
+
+Object.defineProperty(Node.prototype, '__instance', {
+  writable : true,
+  value : null,
+})
 
 module.exports = DomNode
 
@@ -2500,30 +2512,48 @@ module.exports = Style
 "use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   "TodoMain": () => (/* binding */ TodoMain)
+/* harmony export */   "Board": () => (/* binding */ Board)
 /* harmony export */ });
 /* harmony import */ var htmlmodule__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(2);
-/* harmony import */ var _TodoList__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(13);
-/* harmony import */ var _api__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(15);
+/* harmony import */ var _Square_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(13);
 
 
 
-
-class TodoMain extends htmlmodule__WEBPACK_IMPORTED_MODULE_0__.HtmlSection
+class Board extends htmlmodule__WEBPACK_IMPORTED_MODULE_0__.HtmlDiv
 {
-  className = 'main'
+  renderSquare(i) {
+    return new _Square_js__WEBPACK_IMPORTED_MODULE_1__.Square({
+      val : this.props.squares[i],
+      onClick : () => this.props.onClick(i),
+    })
+  }
 
   render() {
     return [
-      new htmlmodule__WEBPACK_IMPORTED_MODULE_0__.HtmlInput({
-        id : 'toggle-all',
-        class : 'toggle-all',
-        type : 'checkbox',
-        checked : this.props.items.every(item => item.completed),
-        onclick : e => _api__WEBPACK_IMPORTED_MODULE_2__["default"].updateItems({ completed : e.target.checked }),
+      new htmlmodule__WEBPACK_IMPORTED_MODULE_0__.HtmlDiv({
+        className : 'board-row',
+        children : [
+          this.renderSquare(0),
+          this.renderSquare(1),
+          this.renderSquare(2),
+        ],
       }),
-      new htmlmodule__WEBPACK_IMPORTED_MODULE_0__.HtmlLabel({ htmlFor : 'toggle-all' }),
-      new _TodoList__WEBPACK_IMPORTED_MODULE_1__.TodoList({ items : this.props.items }),
+      new htmlmodule__WEBPACK_IMPORTED_MODULE_0__.HtmlDiv({
+        className : 'board-row',
+        children : [
+          this.renderSquare(3),
+          this.renderSquare(4),
+          this.renderSquare(5),
+        ],
+      }),
+      new htmlmodule__WEBPACK_IMPORTED_MODULE_0__.HtmlDiv({
+        className : 'board-row',
+        children : [
+          this.renderSquare(6),
+          this.renderSquare(7),
+          this.renderSquare(8),
+        ],
+      }),
     ]
   }
 }
@@ -2536,27 +2566,18 @@ class TodoMain extends htmlmodule__WEBPACK_IMPORTED_MODULE_0__.HtmlSection
 "use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   "TodoList": () => (/* binding */ TodoList)
+/* harmony export */   "Square": () => (/* binding */ Square)
 /* harmony export */ });
 /* harmony import */ var htmlmodule__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(2);
-/* harmony import */ var _TodoItem__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(14);
 
 
-
-class TodoList extends htmlmodule__WEBPACK_IMPORTED_MODULE_0__.HtmlUl
+class Square extends htmlmodule__WEBPACK_IMPORTED_MODULE_0__.HtmlButton
 {
-  className = 'todo-list'
+  className = 'square'
 
   render() {
-    return this.props.items.map(item => {
-      if(location.hash === '#/active' && item.completed) {
-        return null
-      }
-      if(location.hash === '#/completed' && !item.completed) {
-        return null
-      }
-      return new _TodoItem__WEBPACK_IMPORTED_MODULE_1__.TodoItem({ item, id : 'ID' + item.id })
-    })
+    this.onclick = this.props.onClick
+    return this.props.val
   }
 }
 
@@ -2568,278 +2589,26 @@ class TodoList extends htmlmodule__WEBPACK_IMPORTED_MODULE_0__.HtmlUl
 "use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   "TodoItem": () => (/* binding */ TodoItem)
+/* harmony export */   "calculateWinner": () => (/* binding */ calculateWinner)
 /* harmony export */ });
-/* harmony import */ var htmlmodule__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(2);
-/* harmony import */ var _api__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(15);
-
-
-
-class TodoItem extends htmlmodule__WEBPACK_IMPORTED_MODULE_0__.HtmlLi
-{
-  state = {
-    busy : false,
-    editing : false,
-    text : '',
-  }
-
-  className = null
-
-  render() {
-    const item = this.props.item
-    this.class = {
-      completed : item.completed,
-      editing : this.state.editing,
+function calculateWinner(squares) {
+  const lines = [
+    [0, 1, 2],
+    [3, 4, 5],
+    [6, 7, 8],
+    [0, 3, 6],
+    [1, 4, 7],
+    [2, 5, 8],
+    [0, 4, 8],
+    [2, 4, 6],
+  ]
+  for(let i = 0; i < lines.length; i++) {
+    const [a, b, c] = lines[i]
+    if(squares[a] && squares[a] === squares[b] && squares[a] === squares[c]) {
+      return squares[a]
     }
-    return [
-      new htmlmodule__WEBPACK_IMPORTED_MODULE_0__.HtmlDiv({
-        class : 'view',
-        children : [
-          this._checkbox = new htmlmodule__WEBPACK_IMPORTED_MODULE_0__.HtmlInput({
-            class : 'toggle',
-            type : 'checkbox',
-            checked : item.completed,
-            disabled : this.state.busy,
-            onchange : this.onCheck,
-          }),
-          new htmlmodule__WEBPACK_IMPORTED_MODULE_0__.HtmlLabel({
-            children : item.text,
-            ondblclick : this.onEdit,
-          }),
-          new htmlmodule__WEBPACK_IMPORTED_MODULE_0__.HtmlButton({
-            class : 'destroy',
-            disabled : this.state.busy,
-            onclick : this.onDelete,
-          }),
-        ],
-      }),
-      this._input = new htmlmodule__WEBPACK_IMPORTED_MODULE_0__.HtmlInput({
-        class : 'edit',
-        value : this.state.text || item.text,
-        onkeydown : e => {
-          e.code === 'Enter' && this.save()
-          e.code === 'Escape' && this.setState({ editing : false })
-        },
-        onblur : () => this.save(),
-      }),
-    ]
   }
-
-  save = async () => {
-    const text = this._input.value.trim()
-    this.setState({ text, busy : true })
-    await _api__WEBPACK_IMPORTED_MODULE_1__["default"].updateItem({ text, id : this.props.item.id })
-    this.setState({
-      text : '',
-      busy : false,
-      editing : false,
-    })
-  }
-
-  onCheck = async () => {
-    const item = this.props.item
-    this.setState({ busy : true })
-    await _api__WEBPACK_IMPORTED_MODULE_1__["default"].updateItem({
-      id : item.id,
-      completed : !item.completed,
-    })
-    if(location.hash === '#/active' && item.completed) {
-      return
-    }
-    if(location.hash === '#/completed' && !item.completed) {
-      return
-    }
-    this.setState({ busy : false })
-    this._checkbox.focus()
-  }
-
-  onEdit = () => {
-    this.setState({ editing : true })
-    this._input.focus()
-  }
-
-  onDelete = async () => {
-    this.setState({ busy : true })
-    await _api__WEBPACK_IMPORTED_MODULE_1__["default"].deleteItem(this.props.item.id)
-  }
-}
-
-
-/***/ }),
-/* 15 */
-/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   "AppInteface": () => (/* binding */ AppInteface),
-/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
-/* harmony export */ });
-const DELAY = 0
-
-class AppInteface extends EventTarget
-{
-  constructor() {
-    super()
-    const json = localStorage.getItem('TodoApp.items')
-    this._data = json ? JSON.parse(json) : []
-  }
-
-  async _save() {
-    localStorage.setItem('TodoApp.items', JSON.stringify(this._data))
-    await new Promise(resolve => setTimeout(resolve, DELAY))
-    this.dispatchEvent(new CustomEvent('update', { detail : this._data.slice() }))
-  }
-
-  async getItems() {
-    return new Promise(resolve => setTimeout(() => resolve(this._data.slice()), DELAY))
-  }
-
-  async createItem(item) {
-    item.id = Date.now()
-    this._data.unshift(item)
-    return this._save()
-  }
-
-  async updateItem(item) {
-    const oldItem = this._data.find(({ id }) => id === item.id)
-    Object.assign(oldItem, item)
-    return this._save()
-  }
-
-  async updateItems(item) {
-    this._data.forEach(oldItem => Object.assign(oldItem, item))
-    return this._save()
-  }
-
-  async deleteItem(id) {
-    this._data = this._data.filter(item => item.id !== id)
-    return this._save()
-  }
-
-  async deleteItems(ids) {
-    this._data = this._data.filter(item => !ids.includes(item.id))
-    return this._save()
-  }
-}
-
-const api = window.api = new AppInteface
-
-/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (api);
-
-
-/***/ }),
-/* 16 */
-/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   "TodoFooter": () => (/* binding */ TodoFooter)
-/* harmony export */ });
-/* harmony import */ var htmlmodule__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(2);
-/* harmony import */ var _api__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(15);
-
-
-
-class TodoFooter extends htmlmodule__WEBPACK_IMPORTED_MODULE_0__.HtmlFooter
-{
-  className = 'footer'
-
-  render() {
-    const items = this.props.items
-    const itemsLeft = items.filter(item => !item.completed)
-    return [
-      new htmlmodule__WEBPACK_IMPORTED_MODULE_0__.HtmlSpan({
-        class : 'todo-count',
-        children : [
-          new htmlmodule__WEBPACK_IMPORTED_MODULE_0__.HtmlStrong(itemsLeft.length),
-          itemsLeft.length === 1 ? ' item left' : ' items left',
-        ],
-      }),
-      new htmlmodule__WEBPACK_IMPORTED_MODULE_0__.HtmlUl({
-        class : 'filters',
-        children : [
-          new htmlmodule__WEBPACK_IMPORTED_MODULE_0__.HtmlLi(new htmlmodule__WEBPACK_IMPORTED_MODULE_0__.HtmlA({
-            href : '#/',
-            class : { selected : !['#/active', '#/completed'].includes(location.hash) },
-            children : 'All',
-          })),
-          new htmlmodule__WEBPACK_IMPORTED_MODULE_0__.HtmlLi(new htmlmodule__WEBPACK_IMPORTED_MODULE_0__.HtmlA({
-            href : '#/active',
-            class : { selected : location.hash === '#/active' },
-            children : 'Active',
-          })),
-          new htmlmodule__WEBPACK_IMPORTED_MODULE_0__.HtmlLi(new htmlmodule__WEBPACK_IMPORTED_MODULE_0__.HtmlA({
-            href : '#/completed',
-            class : { selected : location.hash === '#/completed' },
-            children : 'Completed',
-          })),
-        ],
-      }),
-      !!(items.length - itemsLeft.length) && new htmlmodule__WEBPACK_IMPORTED_MODULE_0__.HtmlButton({
-        class : 'clear-completed',
-        children : 'Clear completed',
-        onclick : () => _api__WEBPACK_IMPORTED_MODULE_1__["default"].deleteItems(
-          items.filter(item => item.completed).map(item => item.id),
-        ),
-      }),
-    ]
-  }
-}
-
-
-/***/ }),
-/* 17 */
-/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
-
-"use strict";
-__webpack_require__.r(__webpack_exports__);
-/* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   "TodoHeader": () => (/* binding */ TodoHeader)
-/* harmony export */ });
-/* harmony import */ var htmlmodule__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(2);
-/* harmony import */ var _api__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(15);
-
-
-
-class TodoHeader extends htmlmodule__WEBPACK_IMPORTED_MODULE_0__.HtmlHeader
-{
-  state = { text : '', busy : false }
-
-  className = 'header'
-
-  render() {
-    return [
-      new htmlmodule__WEBPACK_IMPORTED_MODULE_0__.HtmlH1('todos'),
-      this._input = new htmlmodule__WEBPACK_IMPORTED_MODULE_0__.HtmlInput({
-        disabled : this.state.busy,
-        required : true,
-        value : this.state.text,
-        class : 'new-todo',
-        placeholder : 'What needs to be done?',
-        autofocus : true,
-        oninput : e => this.setState({ text : e.target.value }),
-        onkeydown : e => {
-          e.code === 'Enter' && this.onSubmit(e)
-        },
-      }),
-    ]
-  }
-
-  onSubmit = async () => {
-    const text = this.state.text.trim()
-    if(!text) {
-      return
-    }
-    this.setState({ busy : true })
-    await _api__WEBPACK_IMPORTED_MODULE_1__["default"].createItem({
-      text,
-      completed : false,
-    })
-    this.setState({ text : '', busy : false })
-    this._input.focus()
-  }
+  return null
 }
 
 
@@ -2905,12 +2674,12 @@ var __webpack_exports__ = {};
 (() => {
 "use strict";
 __webpack_require__.r(__webpack_exports__);
-/* harmony import */ var _TodoApp__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1);
+/* harmony import */ var _Game_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1);
 
 
 const render = app => {
   app?.destroy()
-  return _TodoApp__WEBPACK_IMPORTED_MODULE_0__.TodoApp.render({}, document.getElementById('app'))
+  return _Game_js__WEBPACK_IMPORTED_MODULE_0__.Game.render({}, document.getElementById('root'))
 }
 
 let app = render()

@@ -1,10 +1,10 @@
-import { TodoApp } from './TodoApp'
+import { Game } from './Game.js'
 
 const render = app => {
   app?.destroy()
-  return TodoApp.render({}, document.getElementById('app'))
+  return Game.render({}, document.getElementById('root'))
 }
 
 let app = render()
 
-module.hot?.accept(['./TodoApp'], () => app = render(app))
+module.hot?.accept(['./Game'], () => app = render(app))

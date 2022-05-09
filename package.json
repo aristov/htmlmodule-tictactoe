@@ -1,25 +1,21 @@
 {
-  "name": "htmlmodule-todomvc",
+  "name": "htmlmodule-tictactoe",
   "private": true,
-  "description": "htmlmodule todomvc example",
+  "description": "htmlmodule tic-tac-toe example",
   "keywords": [
     "htmlmodule",
-    "todomvc"
+    "tictactoe"
   ],
   "main": "src/index.js",
   "author": "Vyacheslav Aristov <vv.aristov@gmail.com>",
   "repository": {
     "type": "git",
-    "url": "git://github.com/aristov/htmlmodule-todomvc.git"
+    "url": "git://github.com/aristov/htmlmodule-tictactoe.git"
   },
   "license": "MIT",
   "scripts": {
     "build": "webpack",
     "serve": "webpack serve"
-  },
-  "dependencies": {
-    "todomvc-app-css": "^2.4.2",
-    "todomvc-common": "^1.0.5"
   },
   "devDependencies": {
     "htmlmodule": "github:aristov/htmlmodule#morphdom",
