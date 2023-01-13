@@ -4,7 +4,7 @@ import { calculateWinner } from './calculateWinner.js'
 
 export class Game extends HtmlDiv
 {
-  className = 'game'
+  static className = 'game'
 
   state = {
     history : [
@@ -55,7 +55,7 @@ export class Game extends HtmlDiv
         key : move,
         children : new HtmlButton({
           onclick : () => this.jumpTo(move),
-          text : desc,
+          children : desc,
         }),
       })
     })

@@ -2,7 +2,7 @@ import { HtmlButton } from 'htmlmodule'
 
 export class Square extends HtmlButton
 {
-  className = 'square'
+  static className = 'square'
 
   render() {
     this.onclick = this.props.onClick

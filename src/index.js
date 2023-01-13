@@ -1,7 +1,7 @@
 import { Game } from './Game.js'
 
 const render = app => {
-  app?.destroy()
+  app?.__destroy()
   return Game.render({}, document.getElementById('root'))
 }
 
